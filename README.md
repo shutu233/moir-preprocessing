@@ -1,2 +1,2 @@
-# moir-preprocessing
+# moirepreprocessing
 @ Jornada Group
