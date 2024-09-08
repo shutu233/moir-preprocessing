@@ -1,1 +1,60 @@
+&CONTROL
+   calculation      = 'relax'
+   verbosity        = 'high'
+   restart_mode     = 'restart'
+   nstep            = 300
+   tstress          = .false.
+   tprnfor          = .false.
+   outdir           = './tmp'
+   prefix           = '1D_MoS2'
+   max_seconds      = 28500
+   forc_conv_thr    = 0.0001
+   disk_io          = 'low'
+   pseudo_dir       = '/global/homes/l/ltshu/QEspresso/pseudopot'
+   tefield          = .true.
+   dipfield         = .true.
+/
+&SYSTEM
+   ecutwfc          = 35.0
+   occupations      = 'smearing'
+   degauss          = 0.005
+   smearing         = 'gauss'
+   input_dft        = 'vdw-df-c09'
+   edir             = 3
+   emaxpos          = 0.0
+   ntyp             = 2
+   nat              = 6
+   ibrav            = 0
+/
+&ELECTRONS
+   electron_maxstep = 500
+   conv_thr         = 1e-08
+   mixing_mode      = 'local-TF'
+   mixing_beta      = 0.3
+   mixing_ndim      = 12
+/
+&IONS
+   ion_dynamics     = 'bfgs'
+/
+&CELL
+/
 
+ATOMIC_SPECIES
+Mo 95.95 Mo_ONCV_PBE-1.2.upf
+S 32.06 S_ONCV_PBE-1.2.upf
+
+K_POINTS automatic
+8 8 1  0 0 0
+
+CELL_PARAMETERS angstrom
+3.16021000000000 0.00000000000000 0.00000000000000
+-1.5801049999999994 2.7368221412936213 0.00000000000000
+0.00000000000000 0.00000000000000 30.00000000000000
+
+ATOMIC_POSITIONS angstrom
+Mo       0.00000000       0.00000000       12.00000000      
+S        1.58010500      -0.91190914       10.41407400     
+S        1.58010500      -0.91190914       13.58592600       
+Mo       0.00000000       0.00000000       18.17185200 
+S        1.58010500      -0.91190914       16.58592600   
+S        1.58010500      -0.91190914       19.75777800    
