@@ -1,0 +1,664 @@
+LAMMPS (27 Jun 2024)
+OMP_NUM_THREADS environment is not set. Defaulting to 1 thread. (src/comm.cpp:98)
+  using 1 OpenMP thread(s) per MPI task
+# Variable definition
+# Set initial temperature 1000K, delta T 100K
+variable        Ti          equal   800
+variable        Tf          equal   0
+variable        P           equal   0
+variable        dT          equal   99.99
+variable        nT          equal   8
+variable        Tdamp       equal   1.0
+variable        Pdamp       equal   1.0
+variable        dt          equal   0.01
+
+# Set up problem
+units           metal
+# box tilt        large
+atom_style      atomic
+
+# Build structure
+boundary        p p s
+read_data       lammps.dat
+Reading data file ...
+  triclinic box = (0 0 0) to (37.593658 21.527795 100) with tilt (-27.496151 0 0)
+WARNING: Triclinic box skew is large. LAMMPS will run inefficiently. (src/domain.cpp:221)
+  1 by 1 by 1 MPI processor grid
+  reading atoms ...
+  540 atoms
+  read_data CPU = 0.001 seconds
+
+# Read potential
+pair_style      hybrid/overlay sw/mod sw/mod kolmogorov/crespi/z 14.0 kolmogorov/crespi/z 14.0 kolmogorov/crespi/z 14.0 kolmogorov/crespi/z 14.0 lj/cut 10.0
+
+# Intralayer Interaction
+pair_coeff * * sw/mod 1 tmd.sw Mo S S NULL NULL NULL
+pair_coeff * * sw/mod 2 tmd.sw NULL NULL NULL Mo Se Se
+
+# Interlayer Interaction
+pair_coeff 1 5 kolmogorov/crespi/z 1 WS.KC Mo NULL NULL NULL Se NULL
+pair_coeff 3 4 kolmogorov/crespi/z 2 WS.KC NULL NULL S Mo NULL NULL
+pair_coeff 3 5 kolmogorov/crespi/z 3 WS.KC NULL NULL S NULL Se NULL
+pair_coeff 1 4 kolmogorov/crespi/z 4 WS.KC Mo NULL NULL Mo NULL NULL
+pair_coeff * * lj/cut 0.0 3.0
+neighbor        2.0 bin
+neigh_modify    every 1 delay 0 check yes
+
+################### Molecular Dynamics Part #######################
+timestep        ${dt}
+timestep        0.01
+
+thermo_style    custom step temp ke pe etotal press
+thermo_modify   lost warn
+thermo          1000
+
+# Set the velocity
+velocity        all create ${Ti} 248454 mom yes rot yes dist gaussian
+velocity        all create 800 248454 mom yes rot yes dist gaussian
+
+# Save data
+variable        temp    equal temp
+variable        ke      equal ke
+variable        pe      equal pe
+variable        etotal  equal etotal
+variable        vol     equal vol
+fix             info    all   ave/time    1 100 100  v_temp v_ke v_pe v_etotal v_vol      file info_sa.dat
+dump            trj     all   custom      200 sa.lammpstrj id type x y z
+
+# Equilibrium slowly decrease temperature
+label           equiloop
+variable        istep   loop    0   ${nT}   pad
+variable        istep   loop    0   8   pad
+variable        Tm      equal   -${istep}*${dT}+${Ti}
+variable        Tm      equal   -0*${dT}+${Ti}
+variable        Tm      equal   -0*99.99+${Ti}
+variable        Tm      equal   -0*99.99+800
+# fix             1       all     npt     temp ${Tm} ${Tm} ${Tdamp}    x ${P} ${P} ${Pdamp}   y ${P} ${P} ${Pdamp}
+fix             1       all     nvt     temp ${Tm} ${Tm} ${Tdamp}
+fix             1       all     nvt     temp 800 ${Tm} ${Tdamp}
+fix             1       all     nvt     temp 800 800 ${Tdamp}
+fix             1       all     nvt     temp 800 800 1
+fix             momentum    all momentum 1 linear 1 1 1
+run             10000
+
+CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE
+
+Your simulation uses code contributions which should be cited:
+
+- Type Label Framework: https://doi.org/10.1021/acs.jpcb.3c08419
+
+@Article{Gissinger24,
+ author = {Jacob R. Gissinger, Ilia Nikiforov, Yaser Afshar, Brendon Waters, Moon-ki Choi, Daniel S. Karls, Alexander Stukowski, Wonpil Im, Hendrik Heinz, Axel Kohlmeyer, and Ellad B. Tadmor},
+ title = {Type Label Framework for Bonded Force Fields in LAMMPS},
+ journal = {J. Phys. Chem. B},
+ year =    2024,
+ volume =  128,
+ number =  13,
+ pages =   {3282–-3297}
+}
+
+CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE
+
+Neighbor list info ...
+  update: every = 1 steps, delay = 0 steps, check = yes
+  max neighbors/atom: 2000, page size: 100000
+  master list distance cutoff = 16
+  ghost atom cutoff = 16
+  binsize = 8, bins = 9 3 2
+  9 neighbor lists, perpetual/occasional/extra = 9 0 0
+  (1) pair sw/mod, perpetual, skip from (9)
+      attributes: full, newton on, cut 5.158796000000001
+      pair build: skip
+      stencil: none
+      bin: none
+  (2) pair sw/mod, perpetual, skip from (9)
+      attributes: full, newton on, cut 5.352536000000001
+      pair build: skip
+      stencil: none
+      bin: none
+  (3) pair kolmogorov/crespi/z, perpetual, skip from (8)
+      attributes: half, newton on
+      pair build: skip
+      stencil: none
+      bin: none
+  (4) pair kolmogorov/crespi/z, perpetual, skip from (8)
+      attributes: half, newton on
+      pair build: skip
+      stencil: none
+      bin: none
+  (5) pair kolmogorov/crespi/z, perpetual, skip from (8)
+      attributes: half, newton on
+      pair build: skip
+      stencil: none
+      bin: none
+  (6) pair kolmogorov/crespi/z, perpetual, skip from (8)
+      attributes: half, newton on
+      pair build: skip
+      stencil: none
+      bin: none
+  (7) pair lj/cut, perpetual, trim from (8)
+      attributes: half, newton on, cut 12
+      pair build: trim
+      stencil: none
+      bin: none
+  (8) neighbor class addition, perpetual
+      attributes: half, newton on
+      pair build: half/bin/atomonly/newton/tri
+      stencil: half/bin/3d/tri
+      bin: standard
+  (9) neighbor class addition, perpetual
+      attributes: full, newton on, cut 5.352536000000001
+      pair build: full/bin/atomonly
+      stencil: full/bin/3d
+      bin: standard
+Per MPI rank memory allocation (min/avg/max) = 8.361 | 8.361 | 8.361 Mbytes
+   Step          Temp          KinEng         PotEng         TotEng         Press     
+         0   800            55.736975     -887.45022     -831.71325     -18979.418    
+      1000   776.20863      54.079401     -834.72111     -780.6417      -2989.971     
+      2000   782.95376      54.549342     -825.10882     -770.55948      641.43266    
+      3000   825.39812      57.506493     -834.18185     -776.67536     -219.92708    
+      4000   779.17987      54.286411     -829.01959     -774.73318      2147.5352    
+      5000   859.22874      59.863513     -831.95801     -772.0945       7318.8344    
+      6000   771.58893      53.757541     -828.63694     -774.8794      -1772.4157    
+      7000   822.36168      57.29494      -831.07696     -773.78202      2643.3078    
+      8000   780.94086      54.409101     -831.33338     -776.92428     -3264.7385    
+      9000   770.06427      53.651316     -833.89012     -780.23881     -2194.7051    
+     10000   857.09197      59.714642     -831.83898     -772.12434      2558.3925    
+Loop time of 24.9602 on 1 procs for 10000 steps with 540 atoms
+
+Performance: 346.152 ns/day, 0.069 hours/ns, 400.639 timesteps/s, 216.345 katom-step/s
+99.9% CPU use with 1 MPI tasks x 1 OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 23.752     | 23.752     | 23.752     |   0.0 | 95.16
+Neigh   | 0.88021    | 0.88021    | 0.88021    |   0.0 |  3.53
+Comm    | 0.095118   | 0.095118   | 0.095118   |   0.0 |  0.38
+Output  | 0.031055   | 0.031055   | 0.031055   |   0.0 |  0.12
+Modify  | 0.17777    | 0.17777    | 0.17777    |   0.0 |  0.71
+Other   |            | 0.02356    |            |       |  0.09
+
+Nlocal:            540 ave         540 max         540 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Nghost:           2663 ave        2663 max        2663 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Neighs:          67982 ave       67982 max       67982 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+
+Total # of neighbors = 67982
+Ave neighs/atom = 125.89259
+Neighbor list builds = 187
+Dangerous builds = 0
+unfix           1
+write_data      data.eq.${Tm}
+write_data      data.eq.800
+System init for write_data ...
+next            istep
+jump            SELF    equiloop
+variable        istep   loop    0   ${nT}   pad
+variable        istep   loop    0   8   pad
+variable        Tm      equal   -${istep}*${dT}+${Ti}
+variable        Tm      equal   -1*${dT}+${Ti}
+variable        Tm      equal   -1*99.99+${Ti}
+variable        Tm      equal   -1*99.99+800
+# fix             1       all     npt     temp ${Tm} ${Tm} ${Tdamp}    x ${P} ${P} ${Pdamp}   y ${P} ${P} ${Pdamp}
+fix             1       all     nvt     temp ${Tm} ${Tm} ${Tdamp}
+fix             1       all     nvt     temp 700.01 ${Tm} ${Tdamp}
+fix             1       all     nvt     temp 700.01 700.01 ${Tdamp}
+fix             1       all     nvt     temp 700.01 700.01 1
+fix             momentum    all momentum 1 linear 1 1 1
+run             10000
+Per MPI rank memory allocation (min/avg/max) = 9.637 | 9.637 | 9.637 Mbytes
+   Step          Temp          KinEng         PotEng         TotEng         Press     
+     10000   857.09197      59.714642     -831.83898     -772.12434      2530.3081    
+     11000   661.80831      46.108991     -837.31073     -791.20174      1717.2656    
+     12000   688.83579      47.992029     -839.81034     -791.81832     -4174.3648    
+     13000   694.9768       48.41988      -835.7046      -787.28472     -360.32407    
+     14000   711.58615      49.577074     -838.00714     -788.43007     -2252.3       
+     15000   648.37009      45.172734     -834.93271     -789.75997     -895.59983    
+     16000   721.86044      50.292896     -836.43884     -786.14594     -2367.962     
+     17000   663.0037       46.192275     -836.99996     -790.80768      6217.2853    
+     18000   715.01147      49.81572      -834.83238     -785.01666      1736.4775    
+     19000   706.24659      49.20506      -839.45762     -790.25256      2706.7915    
+     20000   752.03374      52.395107     -837.39364     -784.99853      2022.7065    
+Loop time of 24.7815 on 1 procs for 10000 steps with 540 atoms
+
+Performance: 348.647 ns/day, 0.069 hours/ns, 403.527 timesteps/s, 217.905 katom-step/s
+99.5% CPU use with 1 MPI tasks x 1 OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 24.049     | 24.049     | 24.049     |   0.0 | 97.05
+Neigh   | 0.40262    | 0.40262    | 0.40262    |   0.0 |  1.62
+Comm    | 0.093785   | 0.093785   | 0.093785   |   0.0 |  0.38
+Output  | 0.031196   | 0.031196   | 0.031196   |   0.0 |  0.13
+Modify  | 0.18172    | 0.18172    | 0.18172    |   0.0 |  0.73
+Other   |            | 0.02293    |            |       |  0.09
+
+Nlocal:            540 ave         540 max         540 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Nghost:           2657 ave        2657 max        2657 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Neighs:          68023 ave       68023 max       68023 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+
+Total # of neighbors = 68023
+Ave neighs/atom = 125.96852
+Neighbor list builds = 82
+Dangerous builds = 0
+unfix           1
+write_data      data.eq.${Tm}
+write_data      data.eq.700.01
+System init for write_data ...
+next            istep
+jump            SELF    equiloop
+variable        istep   loop    0   ${nT}   pad
+variable        istep   loop    0   8   pad
+variable        Tm      equal   -${istep}*${dT}+${Ti}
+variable        Tm      equal   -2*${dT}+${Ti}
+variable        Tm      equal   -2*99.99+${Ti}
+variable        Tm      equal   -2*99.99+800
+# fix             1       all     npt     temp ${Tm} ${Tm} ${Tdamp}    x ${P} ${P} ${Pdamp}   y ${P} ${P} ${Pdamp}
+fix             1       all     nvt     temp ${Tm} ${Tm} ${Tdamp}
+fix             1       all     nvt     temp 600.02 ${Tm} ${Tdamp}
+fix             1       all     nvt     temp 600.02 600.02 ${Tdamp}
+fix             1       all     nvt     temp 600.02 600.02 1
+fix             momentum    all momentum 1 linear 1 1 1
+run             10000
+Per MPI rank memory allocation (min/avg/max) = 9.637 | 9.637 | 9.637 Mbytes
+   Step          Temp          KinEng         PotEng         TotEng         Press     
+     20000   752.03374      52.395107     -837.39364     -784.99853      2004.8928    
+     21000   597.90303      41.656632     -848.45698     -806.80035     -727.90014    
+     22000   626.29607      43.63481      -844.59307     -800.95826     -1459.6833    
+     23000   614.25573      42.795945     -848.55114     -805.7552      -237.07896    
+     24000   616.999        42.987072     -845.06599     -802.07892     -7468.884     
+     25000   629.10605      43.830585     -846.40642     -802.57583     -2519.2379    
+     26000   583.28187      40.637958     -845.51111     -804.87316      1654.3144    
+     27000   591.06952      41.180534     -846.8922      -805.71166     -4821.8087    
+     28000   565.94542      39.430107     -849.94615     -810.51604      5148.8864    
+     29000   606.20264      42.234877     -846.20119     -803.96631      3958.1589    
+     30000   567.23516      39.519965     -848.1357      -808.61574     -1295.052     
+Loop time of 24.6813 on 1 procs for 10000 steps with 540 atoms
+
+Performance: 350.063 ns/day, 0.069 hours/ns, 405.166 timesteps/s, 218.789 katom-step/s
+99.5% CPU use with 1 MPI tasks x 1 OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 24.13      | 24.13      | 24.13      |   0.0 | 97.77
+Neigh   | 0.22269    | 0.22269    | 0.22269    |   0.0 |  0.90
+Comm    | 0.092753   | 0.092753   | 0.092753   |   0.0 |  0.38
+Output  | 0.031026   | 0.031026   | 0.031026   |   0.0 |  0.13
+Modify  | 0.18226    | 0.18226    | 0.18226    |   0.0 |  0.74
+Other   |            | 0.02248    |            |       |  0.09
+
+Nlocal:            540 ave         540 max         540 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Nghost:           2662 ave        2662 max        2662 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Neighs:          67951 ave       67951 max       67951 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+
+Total # of neighbors = 67951
+Ave neighs/atom = 125.83519
+Neighbor list builds = 45
+Dangerous builds = 0
+unfix           1
+write_data      data.eq.${Tm}
+write_data      data.eq.600.02
+System init for write_data ...
+next            istep
+jump            SELF    equiloop
+variable        istep   loop    0   ${nT}   pad
+variable        istep   loop    0   8   pad
+variable        Tm      equal   -${istep}*${dT}+${Ti}
+variable        Tm      equal   -3*${dT}+${Ti}
+variable        Tm      equal   -3*99.99+${Ti}
+variable        Tm      equal   -3*99.99+800
+# fix             1       all     npt     temp ${Tm} ${Tm} ${Tdamp}    x ${P} ${P} ${Pdamp}   y ${P} ${P} ${Pdamp}
+fix             1       all     nvt     temp ${Tm} ${Tm} ${Tdamp}
+fix             1       all     nvt     temp 500.03 ${Tm} ${Tdamp}
+fix             1       all     nvt     temp 500.03 500.03 ${Tdamp}
+fix             1       all     nvt     temp 500.03 500.03 1
+fix             momentum    all momentum 1 linear 1 1 1
+run             10000
+Per MPI rank memory allocation (min/avg/max) = 9.637 | 9.637 | 9.637 Mbytes
+   Step          Temp          KinEng         PotEng         TotEng         Press     
+     30000   567.23516      39.519965     -848.1357      -808.61574     -1293.8822    
+     31000   457.28764      31.859787     -854.38697     -822.52718     -2955.185     
+     32000   501.85923      34.965144     -853.90826     -818.94311     -1932.5528    
+     33000   465.00541      32.397493     -854.10952     -821.71202     -5826.4079    
+     34000   475.83426      33.151952     -854.94856     -821.79661     -172.24122    
+     35000   511.01848      35.60328      -854.46349     -818.86021     -2072.8295    
+     36000   518.78849      36.144626     -856.19396     -820.04933     -1764.2828    
+     37000   481.81646      33.568739     -853.90826     -820.33952     -2478.8113    
+     38000   496.6076       34.599257     -853.827       -819.22774     -1034.2059    
+     39000   487.0579       33.933917     -855.51459     -821.58068     -1138.5772    
+     40000   491.82176      34.265821     -853.94056     -819.67474     -1739.4048    
+Loop time of 24.7382 on 1 procs for 10000 steps with 540 atoms
+
+Performance: 349.258 ns/day, 0.069 hours/ns, 404.234 timesteps/s, 218.286 katom-step/s
+99.4% CPU use with 1 MPI tasks x 1 OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 24.191     | 24.191     | 24.191     |   0.0 | 97.79
+Neigh   | 0.21868    | 0.21868    | 0.21868    |   0.0 |  0.88
+Comm    | 0.092942   | 0.092942   | 0.092942   |   0.0 |  0.38
+Output  | 0.030701   | 0.030701   | 0.030701   |   0.0 |  0.12
+Modify  | 0.18177    | 0.18177    | 0.18177    |   0.0 |  0.73
+Other   |            | 0.0226     |            |       |  0.09
+
+Nlocal:            540 ave         540 max         540 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Nghost:           2647 ave        2647 max        2647 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Neighs:          68250 ave       68250 max       68250 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+
+Total # of neighbors = 68250
+Ave neighs/atom = 126.38889
+Neighbor list builds = 44
+Dangerous builds = 0
+unfix           1
+write_data      data.eq.${Tm}
+write_data      data.eq.500.03
+System init for write_data ...
+next            istep
+jump            SELF    equiloop
+variable        istep   loop    0   ${nT}   pad
+variable        istep   loop    0   8   pad
+variable        Tm      equal   -${istep}*${dT}+${Ti}
+variable        Tm      equal   -4*${dT}+${Ti}
+variable        Tm      equal   -4*99.99+${Ti}
+variable        Tm      equal   -4*99.99+800
+# fix             1       all     npt     temp ${Tm} ${Tm} ${Tdamp}    x ${P} ${P} ${Pdamp}   y ${P} ${P} ${Pdamp}
+fix             1       all     nvt     temp ${Tm} ${Tm} ${Tdamp}
+fix             1       all     nvt     temp 400.04 ${Tm} ${Tdamp}
+fix             1       all     nvt     temp 400.04 400.04 ${Tdamp}
+fix             1       all     nvt     temp 400.04 400.04 1
+fix             momentum    all momentum 1 linear 1 1 1
+run             10000
+Per MPI rank memory allocation (min/avg/max) = 9.637 | 9.637 | 9.637 Mbytes
+   Step          Temp          KinEng         PotEng         TotEng         Press     
+     40000   491.82176      34.265821     -853.94056     -819.67474     -1754.8123    
+     41000   393.5112       27.416405     -862.95068     -835.53428     -4507.1914    
+     42000   436.78997      30.431689     -861.65824     -831.22655     -4223.5049    
+     43000   426.4221       29.709347     -864.82738     -835.11803      682.75478    
+     44000   403.46623      28.109984     -863.91368     -835.8037      -5097.7378    
+     45000   409.41777      28.524635     -862.40937     -833.88473     -2246.5723    
+     46000   404.87828      28.208363     -863.30375     -835.09538     -4136.6711    
+     47000   387.2728       26.981768     -863.41263     -836.43086      258.84035    
+     48000   403.9032       28.140428     -862.12374     -833.98332     -1067.4407    
+     49000   425.38266      29.636928     -860.78298     -831.14605     -4044.514     
+     50000   393.99103      27.449835     -862.6823      -835.23246     -5656.9771    
+Loop time of 24.5403 on 1 procs for 10000 steps with 540 atoms
+
+Performance: 352.074 ns/day, 0.068 hours/ns, 407.493 timesteps/s, 220.046 katom-step/s
+99.6% CPU use with 1 MPI tasks x 1 OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 24.027     | 24.027     | 24.027     |   0.0 | 97.91
+Neigh   | 0.18781    | 0.18781    | 0.18781    |   0.0 |  0.77
+Comm    | 0.092144   | 0.092144   | 0.092144   |   0.0 |  0.38
+Output  | 0.030469   | 0.030469   | 0.030469   |   0.0 |  0.12
+Modify  | 0.18048    | 0.18048    | 0.18048    |   0.0 |  0.74
+Other   |            | 0.02221    |            |       |  0.09
+
+Nlocal:            540 ave         540 max         540 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Nghost:           2644 ave        2644 max        2644 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Neighs:          68131 ave       68131 max       68131 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+
+Total # of neighbors = 68131
+Ave neighs/atom = 126.16852
+Neighbor list builds = 38
+Dangerous builds = 0
+unfix           1
+write_data      data.eq.${Tm}
+write_data      data.eq.400.04
+System init for write_data ...
+next            istep
+jump            SELF    equiloop
+variable        istep   loop    0   ${nT}   pad
+variable        istep   loop    0   8   pad
+variable        Tm      equal   -${istep}*${dT}+${Ti}
+variable        Tm      equal   -5*${dT}+${Ti}
+variable        Tm      equal   -5*99.99+${Ti}
+variable        Tm      equal   -5*99.99+800
+# fix             1       all     npt     temp ${Tm} ${Tm} ${Tdamp}    x ${P} ${P} ${Pdamp}   y ${P} ${P} ${Pdamp}
+fix             1       all     nvt     temp ${Tm} ${Tm} ${Tdamp}
+fix             1       all     nvt     temp 300.05 ${Tm} ${Tdamp}
+fix             1       all     nvt     temp 300.05 300.05 ${Tdamp}
+fix             1       all     nvt     temp 300.05 300.05 1
+fix             momentum    all momentum 1 linear 1 1 1
+run             10000
+Per MPI rank memory allocation (min/avg/max) = 9.637 | 9.637 | 9.637 Mbytes
+   Step          Temp          KinEng         PotEng         TotEng         Press     
+     50000   393.99103      27.449835     -862.6823      -835.23246     -5700.5007    
+     51000   308.19325      21.472199     -871.22995     -849.75775     -5406.1424    
+     52000   310.61072      21.640627     -870.01583     -848.3752      -970.26265    
+     53000   292.32916      20.366929     -871.93941     -851.57248      363.22854    
+     54000   312.22359      21.752998     -871.18283     -849.42983     -2931.6537    
+     55000   295.20336      20.567177     -870.64537     -850.07819     -8706.2307    
+     56000   291.18588      20.287275     -870.29579     -850.00852     -5295.0276    
+     57000   305.79666      21.305226     -870.94375     -849.63852     -5082.7282    
+     58000   303.19596      21.124032     -870.27151     -849.14747     -4622.5577    
+     59000   302.11408      21.048656     -870.44328     -849.39463     -5559.0857    
+     60000   296.36739      20.648277     -870.3815      -849.73322     -4450.5261    
+Loop time of 24.1729 on 1 procs for 10000 steps with 540 atoms
+
+Performance: 357.425 ns/day, 0.067 hours/ns, 413.687 timesteps/s, 223.391 katom-step/s
+99.8% CPU use with 1 MPI tasks x 1 OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 23.753     | 23.753     | 23.753     |   0.0 | 98.26
+Neigh   | 0.1015     | 0.1015     | 0.1015     |   0.0 |  0.42
+Comm    | 0.090101   | 0.090101   | 0.090101   |   0.0 |  0.37
+Output  | 0.030378   | 0.030378   | 0.030378   |   0.0 |  0.13
+Modify  | 0.17705    | 0.17705    | 0.17705    |   0.0 |  0.73
+Other   |            | 0.02127    |            |       |  0.09
+
+Nlocal:            540 ave         540 max         540 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Nghost:           2658 ave        2658 max        2658 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Neighs:          68213 ave       68213 max       68213 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+
+Total # of neighbors = 68213
+Ave neighs/atom = 126.32037
+Neighbor list builds = 21
+Dangerous builds = 0
+unfix           1
+write_data      data.eq.${Tm}
+write_data      data.eq.300.05
+System init for write_data ...
+next            istep
+jump            SELF    equiloop
+variable        istep   loop    0   ${nT}   pad
+variable        istep   loop    0   8   pad
+variable        Tm      equal   -${istep}*${dT}+${Ti}
+variable        Tm      equal   -6*${dT}+${Ti}
+variable        Tm      equal   -6*99.99+${Ti}
+variable        Tm      equal   -6*99.99+800
+# fix             1       all     npt     temp ${Tm} ${Tm} ${Tdamp}    x ${P} ${P} ${Pdamp}   y ${P} ${P} ${Pdamp}
+fix             1       all     nvt     temp ${Tm} ${Tm} ${Tdamp}
+fix             1       all     nvt     temp 200.06 ${Tm} ${Tdamp}
+fix             1       all     nvt     temp 200.06 200.06 ${Tdamp}
+fix             1       all     nvt     temp 200.06 200.06 1
+fix             momentum    all momentum 1 linear 1 1 1
+run             10000
+Per MPI rank memory allocation (min/avg/max) = 9.637 | 9.637 | 9.637 Mbytes
+   Step          Temp          KinEng         PotEng         TotEng         Press     
+     60000   296.36739      20.648277     -870.3815      -849.73322     -4431.7966    
+     61000   205.90086      14.345363     -878.18816     -863.8428      -8237.6006    
+     62000   188.29878      13.119005     -876.18092     -863.06192     -4698.6118    
+     63000   195.10651      13.593308     -878.10174     -864.50843     -4836.0748    
+     64000   203.75979      14.196193     -877.38462     -863.18843     -4798.9071    
+     65000   205.35949      14.307646     -878.99857     -864.69093     -6724.4264    
+     66000   208.41659      14.520638     -878.71866     -864.19802     -5060.5864    
+     67000   197.31895      13.747452     -877.84232     -864.09487     -3362.538     
+     68000   197.4986       13.759968     -877.41051     -863.65054     -4750.8682    
+     69000   199.56552      13.903973     -878.73773     -864.83375     -7198.7187    
+     70000   205.91796      14.346555     -877.94176     -863.5952      -8287.8871    
+Loop time of 24.0793 on 1 procs for 10000 steps with 540 atoms
+
+Performance: 358.815 ns/day, 0.067 hours/ns, 415.295 timesteps/s, 224.259 katom-step/s
+99.9% CPU use with 1 MPI tasks x 1 OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 23.72      | 23.72      | 23.72      |   0.0 | 98.51
+Neigh   | 0.043441   | 0.043441   | 0.043441   |   0.0 |  0.18
+Comm    | 0.08787    | 0.08787    | 0.08787    |   0.0 |  0.36
+Output  | 0.030618   | 0.030618   | 0.030618   |   0.0 |  0.13
+Modify  | 0.17631    | 0.17631    | 0.17631    |   0.0 |  0.73
+Other   |            | 0.02083    |            |       |  0.09
+
+Nlocal:            540 ave         540 max         540 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Nghost:           2660 ave        2660 max        2660 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Neighs:          68414 ave       68414 max       68414 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+
+Total # of neighbors = 68414
+Ave neighs/atom = 126.69259
+Neighbor list builds = 9
+Dangerous builds = 0
+unfix           1
+write_data      data.eq.${Tm}
+write_data      data.eq.200.06
+System init for write_data ...
+next            istep
+jump            SELF    equiloop
+variable        istep   loop    0   ${nT}   pad
+variable        istep   loop    0   8   pad
+variable        Tm      equal   -${istep}*${dT}+${Ti}
+variable        Tm      equal   -7*${dT}+${Ti}
+variable        Tm      equal   -7*99.99+${Ti}
+variable        Tm      equal   -7*99.99+800
+# fix             1       all     npt     temp ${Tm} ${Tm} ${Tdamp}    x ${P} ${P} ${Pdamp}   y ${P} ${P} ${Pdamp}
+fix             1       all     nvt     temp ${Tm} ${Tm} ${Tdamp}
+fix             1       all     nvt     temp 100.07 ${Tm} ${Tdamp}
+fix             1       all     nvt     temp 100.07 100.07 ${Tdamp}
+fix             1       all     nvt     temp 100.07 100.07 1
+fix             momentum    all momentum 1 linear 1 1 1
+run             10000
+Per MPI rank memory allocation (min/avg/max) = 9.637 | 9.637 | 9.637 Mbytes
+   Step          Temp          KinEng         PotEng         TotEng         Press     
+     70000   205.91796      14.346555     -877.94176     -863.5952      -8196.2603    
+     71000   99.999699      6.9671009     -885.01471     -878.04761     -6516.9166    
+     72000   97.781316      6.8125434     -885.37737     -878.56482     -6176.6762    
+     73000   97.27174       6.7770406     -885.53166     -878.75462     -7210.5696    
+     74000   100.1045       6.9744021     -885.33325     -878.35885     -5559.7817    
+     75000   96.258679      6.7064594     -885.7942      -879.08774     -6022.4625    
+     76000   97.954254      6.8245922     -885.28165     -878.45706     -7248.154     
+     77000   98.94096       6.8933372     -884.87122     -877.97788     -2862.5974    
+     78000   98.871035      6.8884655     -885.50788     -878.61941     -5149.1303    
+     79000   97.492437      6.7924168     -885.38814     -878.59572     -5505.3543    
+     80000   103.25863      7.1941547     -885.18145     -877.9873      -7485.3954    
+Loop time of 24.2917 on 1 procs for 10000 steps with 540 atoms
+
+Performance: 355.677 ns/day, 0.067 hours/ns, 411.664 timesteps/s, 222.298 katom-step/s
+99.6% CPU use with 1 MPI tasks x 1 OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 23.95      | 23.95      | 23.95      |   0.0 | 98.59
+Neigh   | 0.014855   | 0.014855   | 0.014855   |   0.0 |  0.06
+Comm    | 0.092884   | 0.092884   | 0.092884   |   0.0 |  0.38
+Output  | 0.031606   | 0.031606   | 0.031606   |   0.0 |  0.13
+Modify  | 0.18056    | 0.18056    | 0.18056    |   0.0 |  0.74
+Other   |            | 0.02204    |            |       |  0.09
+
+Nlocal:            540 ave         540 max         540 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Nghost:           2655 ave        2655 max        2655 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Neighs:          68439 ave       68439 max       68439 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+
+Total # of neighbors = 68439
+Ave neighs/atom = 126.73889
+Neighbor list builds = 3
+Dangerous builds = 0
+unfix           1
+write_data      data.eq.${Tm}
+write_data      data.eq.100.07
+System init for write_data ...
+next            istep
+jump            SELF    equiloop
+variable        istep   loop    0   ${nT}   pad
+variable        istep   loop    0   8   pad
+variable        Tm      equal   -${istep}*${dT}+${Ti}
+variable        Tm      equal   -8*${dT}+${Ti}
+variable        Tm      equal   -8*99.99+${Ti}
+variable        Tm      equal   -8*99.99+800
+# fix             1       all     npt     temp ${Tm} ${Tm} ${Tdamp}    x ${P} ${P} ${Pdamp}   y ${P} ${P} ${Pdamp}
+fix             1       all     nvt     temp ${Tm} ${Tm} ${Tdamp}
+fix             1       all     nvt     temp 0.0800000000000409 ${Tm} ${Tdamp}
+fix             1       all     nvt     temp 0.0800000000000409 0.0800000000000409 ${Tdamp}
+fix             1       all     nvt     temp 0.0800000000000409 0.0800000000000409 1
+fix             momentum    all momentum 1 linear 1 1 1
+run             10000
+Per MPI rank memory allocation (min/avg/max) = 9.637 | 9.637 | 9.637 Mbytes
+   Step          Temp          KinEng         PotEng         TotEng         Press     
+     80000   103.25863      7.1941547     -885.18145     -877.9873      -7410.9987    
+     81000   0.04322581     0.0030115948  -893.00167     -892.99866     -7341.466     
+     82000   0.093281209    0.0064990155  -892.99881     -892.99231     -7336.7913    
+     83000   0.09768844     0.0068060726  -892.99834     -892.99153     -7328.7994    
+     84000   0.061858995    0.0043097915  -893.00032     -892.99601     -7383.8956    
+     85000   0.097942338    0.006823762   -892.99968     -892.99286     -7329.0784    
+     86000   0.08911599     0.0062088196  -892.99905     -892.99284     -7338.2378    
+     87000   0.065899752    0.004591316   -893.00037     -892.99578     -7338.5893    
+     88000   0.086474841    0.0060248075  -892.99968     -892.99366     -7362.1022    
+     89000   0.089471191    0.0062335669  -892.99861     -892.99237     -7354.7701    
+     90000   0.065758953    0.0045815064  -892.99941     -892.99483     -7315.2018    
+Loop time of 24.1305 on 1 procs for 10000 steps with 540 atoms
+
+Performance: 358.053 ns/day, 0.067 hours/ns, 414.414 timesteps/s, 223.783 katom-step/s
+99.9% CPU use with 1 MPI tasks x 1 OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 23.805     | 23.805     | 23.805     |   0.0 | 98.65
+Neigh   | 0          | 0          | 0          |   0.0 |  0.00
+Comm    | 0.092643   | 0.092643   | 0.092643   |   0.0 |  0.38
+Output  | 0.030866   | 0.030866   | 0.030866   |   0.0 |  0.13
+Modify  | 0.18057    | 0.18057    | 0.18057    |   0.0 |  0.75
+Other   |            | 0.02146    |            |       |  0.09
+
+Nlocal:            540 ave         540 max         540 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Nghost:           2663 ave        2663 max        2663 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Neighs:          68447 ave       68447 max       68447 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+
+Total # of neighbors = 68447
+Ave neighs/atom = 126.7537
+Neighbor list builds = 0
+Dangerous builds = 0
+unfix           1
+write_data      data.eq.${Tm}
+write_data      data.eq.0.0800000000000409
+System init for write_data ...
+next            istep
+jump            SELF    equiloop
+
+Total wall time: 0:03:40

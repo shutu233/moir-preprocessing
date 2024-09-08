@@ -1,0 +1,68 @@
+# Variable definition
+# Set initial temperature 1000K, delta T 100K
+variable        Ti          equal   800    
+variable        Tf          equal   0
+variable        P           equal   0
+variable        dT          equal   99.99 
+variable        nT          equal   8
+variable        Tdamp       equal   1.0
+variable        Pdamp       equal   1.0
+variable        dt          equal   0.01
+
+# Set up problem
+units           metal
+# box tilt        large
+atom_style      atomic
+
+# Build structure
+boundary        p p s
+read_data       lammps.dat
+
+# Read potential
+pair_style      hybrid/overlay sw/mod sw/mod kolmogorov/crespi/z 14.0 kolmogorov/crespi/z 14.0 kolmogorov/crespi/z 14.0 kolmogorov/crespi/z 14.0 lj/cut 10.0
+
+# Intralayer Interaction
+pair_coeff * * sw/mod 1 tmd.sw Mo S S NULL NULL NULL
+pair_coeff * * sw/mod 2 tmd.sw NULL NULL NULL Mo Se Se
+
+# Interlayer Interaction
+pair_coeff 1 5 kolmogorov/crespi/z 1 WS.KC Mo NULL NULL NULL Se NULL
+pair_coeff 3 4 kolmogorov/crespi/z 2 WS.KC NULL NULL S Mo NULL NULL
+pair_coeff 3 5 kolmogorov/crespi/z 3 WS.KC NULL NULL S NULL Se NULL
+pair_coeff 1 4 kolmogorov/crespi/z 4 WS.KC Mo NULL NULL Mo NULL NULL
+pair_coeff * * lj/cut 0.0 3.0
+neighbor        2.0 bin
+neigh_modify    every 1 delay 0 check yes
+
+################### Molecular Dynamics Part #######################
+timestep        ${dt}
+
+thermo_style    custom step temp ke pe etotal press
+thermo_modify   lost warn
+thermo          1000
+
+# Set the velocity
+velocity        all create ${Ti} 248454 mom yes rot yes dist gaussian
+
+# Save data
+variable        temp    equal temp
+variable        ke      equal ke
+variable        pe      equal pe
+variable        etotal  equal etotal
+variable        vol     equal vol
+fix             info    all   ave/time    1 100 100  v_temp v_ke v_pe v_etotal v_vol      file info_sa.dat
+dump            trj     all   custom      200 sa.lammpstrj id type x y z
+
+# Equilibrium slowly decrease temperature
+label           equiloop
+variable        istep   loop    0   ${nT}   pad
+variable        Tm      equal   -${istep}*${dT}+${Ti}
+# fix             1       all     npt     temp ${Tm} ${Tm} ${Tdamp}    x ${P} ${P} ${Pdamp}   y ${P} ${P} ${Pdamp}
+fix             1       all     nvt     temp ${Tm} ${Tm} ${Tdamp}
+fix             momentum    all momentum 1 linear 1 1 1
+run             10000
+unfix           1
+write_data      data.eq.${Tm}
+next            istep
+jump            SELF    equiloop
+
